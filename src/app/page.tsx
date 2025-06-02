@@ -1,75 +1,68 @@
 "use client";
-import { useState, useEffect, FormEvent } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { AuthProvider, useAuth } from "@/lib/authContext";
+import { useUsers } from "@/lib/useUsers";
+import { useEffect } from "react";
 
-type User = {
-  id: number;
-  name: string;
-  email: string;
-  dob: string;
-};
+function Home() {
+  const { user, loading, logout } = useAuth();
+  const {
+    users,
+    name,
+    setName,
+    email,
+    setEmail,
+    dob,
+    setDob,
+    editId,
+    handleSubmit,
+    handleEdit,
+    handleDelete,
+  } = useUsers();
 
-export default function Home() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [dob, setDob] = useState("");
-  const [editId, setEditId] = useState<number | null>(null);
+  if (loading) {
+    return <div className="p-8 max-w-2xl mx-auto">Loading...</div>;
+  }
 
-  // Fetch Users
-  const fetchUsers = async () => {
-    const { data } = await supabase
-      .from("first-supabase")
-      .select("*")
-      .order("created_at", { ascending: false });
-    setUsers(data || []);
-  };
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  // Create or Update User
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-
-    if (editId) {
-      // Update User
-      await supabase
-        .from("first-supabase")
-        .update({ name, email, dob })
-        .eq("id", editId);
-      setEditId(null);
-    } else {
-      // Create New User
-      await supabase.from("first-supabase").insert([{ name, email, dob }]);
-    }
-
-    setName("");
-    setEmail("");
-    setDob("");
-    fetchUsers();
-  };
-
-  // Edit User
-  const handleEdit = (user: User) => {
-    setEditId(user.id);
-    setName(user.name);
-    setEmail(user.email);
-    setDob(user.dob);
-  };
-
-  // Delete User
-  const handleDelete = async (id: number) => {
-    await supabase.from("first-supabase").delete().eq("id", id);
-    console.log(id);
-    setUsers(users.filter((user) => user.id !== id));
-  };
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+        <h1 className="text-4xl font-bold mb-4">Welcome to User Management</h1>
+        <p className="mb-6 text-lg text-gray-600">
+          Please login or register to continue.
+        </p>
+        <div className="flex space-x-4">
+          <a
+            href="/login"
+            className="px-6 py-2 bg-blue-500 text-white rounded shadow hover:bg-blue-600"
+          >
+            Login
+          </a>
+          <a
+            href="/register"
+            className="px-6 py-2 bg-green-500 text-white rounded shadow hover:bg-green-600"
+          >
+            Register
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 max-w-2xl mx-auto">
-      <h1 className="text-3xl font-bold mb-4">User Management</h1>
-      <form onSubmit={handleSubmit} className="space-y-4 mb-8">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-3xl font-bold">User Management</h1>
+        <button
+          onClick={logout}
+          className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-900"
+        >
+          Logout
+        </button>
+      </div>
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-4 mb-8 bg-white p-6 rounded shadow"
+      >
         <input
           type="text"
           placeholder="Name"
@@ -95,12 +88,11 @@ export default function Home() {
         />
         <button
           type="submit"
-          className="px-4 py-2 bg-blue-500 text-white rounded"
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
         >
           {editId ? "Update" : "Create"} User
         </button>
       </form>
-
       <ul className="space-y-4">
         {users.map((user) => (
           <li key={user.id} className="p-4 bg-gray-100 rounded shadow">
@@ -110,13 +102,13 @@ export default function Home() {
             <div className="mt-2 space-x-2">
               <button
                 onClick={() => handleEdit(user)}
-                className="px-2 py-1 bg-yellow-400 text-white rounded"
+                className="px-2 py-1 bg-yellow-400 text-white rounded hover:bg-yellow-500"
               >
                 Edit
               </button>
               <button
                 onClick={() => handleDelete(user.id)}
-                className="px-2 py-1 bg-red-500 text-white rounded"
+                className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
               >
                 Delete
               </button>
@@ -127,3 +119,5 @@ export default function Home() {
     </div>
   );
 }
+
+export default Home;
