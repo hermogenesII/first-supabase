@@ -1,69 +1,80 @@
 import { useState, useEffect, FormEvent } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@/lib/authContext";
 
-export type User = {
+export type Post = {
   id: number;
-  name: string;
-  email: string;
-  dob: string;
+  title: string;
+  content: string;
+  user_id: string;
+  created_at: string;
 };
 
 export function useUsers() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [dob, setDob] = useState("");
+  const { user } = useAuth();
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
   const [editId, setEditId] = useState<number | null>(null);
 
-  const fetchUsers = async () => {
+  // Fetch Posts
+  const fetchPosts = async () => {
     const { data } = await supabase
-      .from("first-supabase")
+      .from("posts")
       .select("*")
       .order("created_at", { ascending: false });
-    setUsers(data || []);
+    setPosts(data || []);
   };
 
   useEffect(() => {
-    fetchUsers();
+    fetchPosts();
   }, []);
 
+  // Create or Update Post
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!user) return;
     if (editId) {
+      // Update Post
       await supabase
-        .from("first-supabase")
-        .update({ name, email, dob })
-        .eq("id", editId);
+        .from("posts")
+        .update({ title, content })
+        .eq("id", editId)
+        .eq("user_id", user.id);
       setEditId(null);
     } else {
-      await supabase.from("first-supabase").insert([{ name, email, dob }]);
+      // Create New Post
+      await supabase
+        .from("posts")
+        .insert([{ title, content, user_id: user.id }]);
     }
-    setName("");
-    setEmail("");
-    setDob("");
-    fetchUsers();
+    setTitle("");
+    setContent("");
+    fetchPosts();
   };
 
-  const handleEdit = (user: User) => {
-    setEditId(user.id);
-    setName(user.name);
-    setEmail(user.email);
-    setDob(user.dob);
+  // Edit Post
+  const handleEdit = (post: Post) => {
+    setEditId(post.id);
+    setTitle(post.title);
+    setContent(post.content);
   };
 
+  // Delete Post
   const handleDelete = async (id: number) => {
-    await supabase.from("first-supabase").delete().eq("id", id);
-    setUsers(users.filter((user) => user.id !== id));
+    if (!user) return;
+    await supabase.from("posts").delete().eq("id", id).eq("user_id", user.id);
+    setPosts(posts.filter((post) => post.id !== id));
   };
 
   return {
-    users,
-    name,
-    setName,
-    email,
-    setEmail,
-    dob,
-    setDob,
+    users: posts,
+    name: title,
+    setName: setTitle,
+    email: content,
+    setEmail: setContent,
+    dob: undefined,
+    setDob: undefined,
     editId,
     handleSubmit,
     handleEdit,
